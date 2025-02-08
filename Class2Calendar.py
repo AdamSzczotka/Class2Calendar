@@ -1,5 +1,4 @@
 import os
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -8,44 +7,49 @@ import pickle
 from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
-import time
 import pytz
 
 # Zakres uprawnień dla Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
+
 def get_calendar_service():
     """Autoryzacja i utworzenie usługi Google Calendar."""
     creds = None
-    
+
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json',
+                SCOPES
+            )
             creds = flow.run_local_server(port=0)
-        
+
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
-    
+
     return build('calendar', 'v3', credentials=creds)
+
 
 def event_exists(service, start_time, timezone='Europe/Warsaw'):
     tz = pytz.timezone(timezone)
     start_time = tz.localize(start_time)
-    
+
     start = start_time.isoformat()
     events_result = service.events().list(
         calendarId='primary',
         timeMin=start,
         timeMax=(start_time + timedelta(minutes=1)).isoformat()
     ).execute()
-    
+
     return len(events_result.get('items', [])) > 0
+
 
 def add_event(service, zajecia):
     """Dodaje pojedyncze zajęcia do kalendarza."""
@@ -54,20 +58,32 @@ def add_event(service, zajecia):
         if ' - ' not in zajecia['time']:
             print(f"Nieprawidłowy format czasu dla zajęć: {zajecia}")
             return None
-            
+
         start_time, end_time = zajecia['time'].split(' - ')
-        
-        start_datetime = datetime.strptime(f"{data} {start_time.strip()}", "%Y-%m-%d %H:%M")
-        end_datetime = datetime.strptime(f"{data} {end_time.strip()}", "%Y-%m-%d %H:%M")
-        
+
+        start_datetime = datetime.strptime(
+            f"{data} {start_time.strip()}",
+            "%Y-%m-%d %H:%M"
+        )
+        end_datetime = datetime.strptime(
+            f"{data} {end_time.strip()}",
+            "%Y-%m-%d %H:%M"
+        )
+
         if event_exists(service, start_datetime):
-            print(f"Wydarzenie już istnieje: {zajecia['subject']} {start_datetime}")
+            print(
+                f"Wydarzenie już istnieje: "
+                f"{zajecia['subject']} {start_datetime}"
+            )
             return None
-        
+
         event = {
             'summary': f"{zajecia['subject']} ({zajecia['type']})",
             'location': f"Sala {zajecia['room']}",
-            'description': f"Prowadzący: {zajecia['lecturer']}\nDzień: {zajecia['day']}",
+            'description': (
+                f"Prowadzący: {zajecia['lecturer']}\n"
+                f"Dzień: {zajecia['day']}"
+            ),
             'start': {
                 'dateTime': start_datetime.isoformat(),
                 'timeZone': 'Europe/Warsaw',
@@ -83,8 +99,12 @@ def add_event(service, zajecia):
                 ]
             }
         }
-        
-        event = service.events().insert(calendarId='primary', body=event).execute()
+
+        event = (
+                service.events()
+                .insert(calendarId='primary', body=event)
+                .execute()
+            )
         print(f"Dodano zajęcia: {zajecia['subject']} ({start_time})")
         return event
     except ValueError as e:
@@ -94,6 +114,7 @@ def add_event(service, zajecia):
     except HttpError as error:
         print(f"Wystąpił błąd podczas dodawania wydarzenia: {error}")
         return None
+
 
 def is_valid_time_format(time_str):
     """Sprawdza czy string zawiera prawidłowy format czasu (HH:MM - HH:MM)"""
@@ -107,23 +128,27 @@ def is_valid_time_format(time_str):
     except ValueError:
         return False
 
+
 def main():
     url = 'https://www.wsti.pl/wp-content/uploads/2025/02/4ADI.htm'
     response = requests.get(url)
     response.encoding = 'windows-1250'
-    
+
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all("table")
-    
+
     schedule = []
     current_date = None
     current_day = None
-    
+
     for table in tables:
         rows = table.find_all("tr")
 
         for row in rows:
-            cols = [col.get_text(strip=True).replace("\r\n", " ") for col in row.find_all("td")]
+            cols = [
+                col.get_text(strip=True).replace("\r\n", " ")
+                for col in row.find_all("td")
+            ]
 
             if not cols or (len(cols) >= 5 and "Prowadzący" in cols[0]):
                 if schedule:
@@ -168,7 +193,7 @@ def main():
                     "room": sala,
                     "lecturer": prowadzacy
                 })
-        
+
         if schedule and not cols:
             break
 
@@ -183,6 +208,7 @@ def main():
 
     except Exception as e:
         print(f"Wystąpił błąd: {str(e)}")
+
 
 if __name__ == '__main__':
     main()
