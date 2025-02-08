@@ -1,0 +1,6 @@
+# .gitignore
+config.py
+token.pickle
+credentials.json
+__pycache__/
+*.pyc
