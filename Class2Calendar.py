@@ -55,8 +55,9 @@ def add_event(service, zajecia):
     start_time, end_time = zajecia['time'].split(' - ')
     
     # Tworzenie pełnych dat z czasem
-    start_datetime = datetime.strptime(f"{data} {start_time}", "%Y-%m-%d %H:%M")
-    end_datetime = datetime.strptime(f"{data} {end_time}", "%Y-%m-%d %H:%M")
+    start_datetime = datetime.strptime(f"{data} {start_time.strip()}", "%Y-%m-%d %H:%M")
+    end_datetime = datetime.strptime(f"{data} {end_time.strip()}", "%Y-%m-%d %H:%M")
+
     
     # Sprawdzenie czy wydarzenie już istnieje
     if event_exists(service, start_datetime, zajecia['subject'], zajecia['room']):
