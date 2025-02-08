@@ -37,6 +37,20 @@ def get_calendar_service():
     return build('calendar', 'v3', credentials=creds)
 
 
+def event_exists(service, start_time, subject, room):
+    """Sprawdza czy wydarzenie już istnieje w kalendarzu."""
+    # Szukamy wydarzeń w tym samym czasie
+    start = start_time.isoformat() + 'Z'
+    events_result = service.events().list(
+        calendarId='primary',
+        timeMin=start,
+        timeMax=(start_time + timedelta(minutes=1)).isoformat() + 'Z',
+        q=f"{subject} {room}"  # Szukamy po nazwie przedmiotu i sali
+    ).execute()
+
+    return len(events_result.get('items', [])) > 0
+
+
 def main():
     pass
 
