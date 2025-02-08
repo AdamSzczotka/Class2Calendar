@@ -8,6 +8,8 @@ import pickle
 from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
+import time
+import pytz
 
 # Zakres uprawnień dla Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -35,18 +37,21 @@ def get_calendar_service():
     
     return build('calendar', 'v3', credentials=creds)
 
-def event_exists(service, start_time, subject, room):
-    """Sprawdza czy wydarzenie już istnieje w kalendarzu."""
-    # Szukamy wydarzeń w tym samym czasie
-    start = start_time.isoformat() + 'Z'
+def event_exists(service, start_time, timezone='Europe/Warsaw'):
+    # Konwertowanie start_time do odpowiedniej strefy czasowej
+    tz = pytz.timezone(timezone)
+    start_time = tz.localize(start_time)  # Lokalizujemy czas do wskazanej strefy
+    
+    # Sprawdzanie, czy w danym czasie już istnieje jakieś wydarzenie
+    start = start_time.isoformat()  # .isoformat() generuje format w formie 'YYYY-MM-DDTHH:MM:SS+TZ'
     events_result = service.events().list(
         calendarId='primary',
         timeMin=start,
-        timeMax=(start_time + timedelta(minutes=1)).isoformat() + 'Z',
-        q=f"{subject} {room}"  # Szukamy po nazwie przedmiotu i sali
+        timeMax=(start_time + timedelta(minutes=1)).isoformat()
     ).execute()
     
     return len(events_result.get('items', [])) > 0
+
 
 def add_event(service, zajecia):
     """Dodaje pojedyncze zajęcia do kalendarza."""
@@ -57,10 +62,9 @@ def add_event(service, zajecia):
     # Tworzenie pełnych dat z czasem
     start_datetime = datetime.strptime(f"{data} {start_time.strip()}", "%Y-%m-%d %H:%M")
     end_datetime = datetime.strptime(f"{data} {end_time.strip()}", "%Y-%m-%d %H:%M")
-
     
     # Sprawdzenie czy wydarzenie już istnieje
-    if event_exists(service, start_datetime, zajecia['subject'], zajecia['room']):
+    if event_exists(service, start_datetime):
         print(f"Wydarzenie już istnieje: {zajecia['subject']} {start_datetime}")
         return None
     
@@ -92,6 +96,7 @@ def add_event(service, zajecia):
     except HttpError as error:
         print(f"Wystąpił błąd podczas dodawania wydarzenia: {error}")
         return None
+
 
 def main():
     # URL i pobieranie danych
@@ -167,6 +172,7 @@ def main():
 
     except Exception as e:
         print(f"Wystąpił błąd: {str(e)}")
+
 
 if __name__ == '__main__':
     main()
