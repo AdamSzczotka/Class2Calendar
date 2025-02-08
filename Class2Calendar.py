@@ -51,6 +51,51 @@ def event_exists(service, start_time, subject, room):
     return len(events_result.get('items', [])) > 0
 
 
+def add_event(service, zajecia):
+    """Dodaje pojedyncze zajęcia do kalendarza."""
+    # Parsowanie daty i czasu
+    data = zajecia['date']
+    start_time, end_time = zajecia['time'].split(' - ')
+
+    # Tworzenie pełnych dat z czasem
+    start_datetime = datetime.strptime(f"{data} {start_time}", "%Y-%m-%d %H:%M")
+    end_datetime = datetime.strptime(f"{data} {end_time}", "%Y-%m-%d %H:%M")
+
+    # Sprawdzenie czy wydarzenie już istnieje
+    if event_exists(service, start_datetime, zajecia['subject'], zajecia['room']):
+        print(f"Wydarzenie już istnieje: {zajecia['subject']} {start_datetime}")
+        return None
+
+    # Tworzenie wydarzenia
+    event = {
+        'summary': f"{zajecia['subject']} ({zajecia['type']})",
+        'location': f"Sala {zajecia['room']}",
+        'description': f"Prowadzący: {zajecia['lecturer']}\nDzień: {zajecia['day']}",
+        'start': {
+            'dateTime': start_datetime.isoformat(),
+            'timeZone': 'Europe/Warsaw',
+        },
+        'end': {
+            'dateTime': end_datetime.isoformat(),
+            'timeZone': 'Europe/Warsaw',
+        },
+        'reminders': {
+            'useDefault': False,
+            'overrides': [
+                {'method': 'popup', 'minutes': 15},
+            ]
+        }
+    }
+
+    try:
+        event = service.events().insert(calendarId='primary', body=event).execute()
+        print(f"Dodano zajęcia: {zajecia['subject']} ({start_time})")
+        return event
+    except HttpError as error:
+        print(f"Wystąpił błąd podczas dodawania wydarzenia: {error}")
+        return None
+
+
 def main():
     pass
 
