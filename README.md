@@ -19,8 +19,8 @@ Automatically sync your WSTI class schedule with Google Calendar. This Python ap
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/wsti-calendar
-cd wsti-calendar
+git clone https://github.com/AdamSzczotka/Class2Calendar
+cd Class2Calendar
 ```
 
 2. Install required dependencies:
